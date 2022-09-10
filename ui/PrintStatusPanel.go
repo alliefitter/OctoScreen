@@ -34,7 +34,8 @@ type printStatusPanel struct {
 	// See https://community.octoprint.org/t/layer-number-and-total-layers-from-api/8005/4
 	// and https://docs.octoprint.org/en/master/api/datamodel.html#sec-api-datamodel-jobs-job
 	// darn.
-	
+
+	timeFinishWithImage		*utils.LabelWithImage
 	progressBar				*gtk.ProgressBar
 
 	pauseButton				*gtk.Button
@@ -89,6 +90,10 @@ func (this *printStatusPanel) createInfoBox() *gtk.Box {
 	ctx, _ = this.timeLeftLabelWithImage.GetStyleContext()
 	ctx.AddClass("printing-status-label")
 
+	this.timeFinishWithImage = utils.MustLabelWithImage("time.svg", "Time to Completion:")
+	ctx, _ = this.timeFinishWithImage.GetStyleContext()
+	ctx.AddClass("printing-status-label")
+
 	// this.layerLabelWithImage = utils.MustLabelWithImage("time.svg", "")
 	// ctx, _ = this.layerLabelWithImage.GetStyleContext()
 	// ctx.AddClass("printing-status-label")
@@ -100,6 +105,7 @@ func (this *printStatusPanel) createInfoBox() *gtk.Box {
 	infoBox.SetVAlign(gtk.ALIGN_CENTER)
 	infoBox.Add(this.fileLabelWithImage)
 	infoBox.Add(this.timeLabelWithImage)
+	infoBox.Add(this.timeToFinish)
 	infoBox.Add(this.timeLeftLabelWithImage)
 	// infoBox.Add(this.layerLabelWithImage)
 
@@ -379,26 +385,31 @@ func (this *printStatusPanel) updateJob() {
 	this.fileLabelWithImage.Label.SetLabel(jobFileName)
 	this.progressBar.SetFraction(jobResponse.Progress.Completion / 100)
 
-	var timeSpent, timeLeft string
+	var timeSpent, timeLeft, finishTime string
 	switch jobResponse.Progress.Completion {
 		case 100:
 			timeSpent = fmt.Sprintf("Completed in %s", time.Duration(int64(jobResponse.Job.LastPrintTime) * 1e9))
 			timeLeft = ""
+			finishTime = ""
 
 		case 0:
 			timeSpent = "Warming up ..."
 			timeLeft = ""
+			finishTime = ""
 
 		default:
 			logger.Info(jobResponse.Progress.PrintTime)
 			printTime := time.Duration(int64(jobResponse.Progress.PrintTime) * 1e9)
 			printTimeLeft := time.Duration(int64(jobResponse.Progress.PrintTimeLeft) * 1e9)
+			printFinish := time.Now().Add(printTimeLeft).Format("Jan _2 15:04 MST")
 			timeSpent = fmt.Sprintf("Time: %s", printTime)
 			timeLeft = fmt.Sprintf("Left: %s", printTimeLeft)
+			finishTime = fmt.Sprintf("Finish Time: %s", printFinish)
 	}
 
 	this.timeLabelWithImage.Label.SetLabel(timeSpent)
 	this.timeLeftLabelWithImage.Label.SetLabel(timeLeft)
+	this.timeFinishWithImage.Label.SetLabel(finishTime)
 
 	logger.TraceLeave("PrintStatusPanel.updateJob()")
 }
